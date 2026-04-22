@@ -3,7 +3,6 @@ import axios from 'axios'
 const AUTH_TOKEN = import.meta.env.VITE_FOOTBALL_API_KEY || import.meta.env.VITE_X_AUTH_TOKEN
 const TEAM_ID = 66
 const CACHE_TTL = 5 * 60 * 1000
-const IS_DEV = import.meta.env.DEV
 
 type CacheEntry<T> = {
   timestamp: number
@@ -107,7 +106,7 @@ const mapApiError = (status?: number) => {
     return 'Rate limit reached. Please wait a few minutes and try again.'
   }
   if (status === 404) {
-    return 'Requested API endpoint was not found. Verify the proxy route and team ID.'
+    return 'Team data endpoint not found. Please verify the team ID.'
   }
   return 'Unable to load data. Please try again later.'
 }
@@ -115,19 +114,11 @@ const mapApiError = (status?: number) => {
 const resolveErrorMessage = (error: unknown) => {
   if (axios.isAxiosError(error)) {
     if (!error.response) {
-      return IS_DEV
-        ? 'Network/CORS error. Restart the dev server so proxy settings and .env are reloaded.'
-        : 'Network error while reaching the football API proxy.'
+      return 'Network/CORS error. Restart the dev server so proxy settings and .env are reloaded.'
     }
     return mapApiError(error.response?.status)
   }
   return 'Unable to load data. Please try again later.'
-}
-
-const assertDevApiToken = () => {
-  if (IS_DEV && !AUTH_TOKEN) {
-    throw new Error('Missing VITE_FOOTBALL_API_KEY in .env. Restart the dev server.')
-  }
 }
 
 const getFixtures = (teamId: number) => api.get<MatchesResponse>(`/teams/${teamId}/matches`)
@@ -138,7 +129,9 @@ const getCompetitionScorers = (competitionCode: string) =>
   })
 
 export const fetchTeam = async (): Promise<TeamResponse> => {
-  assertDevApiToken()
+  if (!AUTH_TOKEN) {
+    throw new Error('Missing VITE_FOOTBALL_API_KEY in .env. Restart the dev server.')
+  }
 
   const cacheKey = `football-team-${TEAM_ID}`
   const cached = getCache<TeamResponse>(cacheKey)
@@ -154,7 +147,9 @@ export const fetchTeam = async (): Promise<TeamResponse> => {
 }
 
 export const fetchMatches = async (): Promise<MatchesResponse> => {
-  assertDevApiToken()
+  if (!AUTH_TOKEN) {
+    throw new Error('Missing VITE_FOOTBALL_API_KEY in .env. Restart the dev server.')
+  }
 
   const cacheKey = `football-matches-${TEAM_ID}`
   const cached = getCache<MatchesResponse>(cacheKey)
@@ -175,7 +170,9 @@ export const fetchPlayerById = async (playerId: number) => {
 }
 
 export const fetchTeamScorers = async (competitionCode = 'PL'): Promise<ScorerItem[]> => {
-  assertDevApiToken()
+  if (!AUTH_TOKEN) {
+    throw new Error('Missing VITE_FOOTBALL_API_KEY in .env. Restart the dev server.')
+  }
 
   const cacheKey = `football-scorers-${competitionCode}-${TEAM_ID}`
   const cached = getCache<ScorerItem[]>(cacheKey)
