@@ -50,9 +50,9 @@ watch(
 
       <nav :class="['menu', { open: menuOpen }]">
         <RouterLink to="/" class="nav-link">Home</RouterLink>
-        <RouterLink to="/league-live" class="nav-link">League Live</RouterLink>
         <RouterLink to="/fixtures" class="nav-link">Fixtures</RouterLink>
         <RouterLink to="/players" class="nav-link">Players</RouterLink>
+        <RouterLink to="/league-live" class="nav-link">Premier League</RouterLink>
         <button class="theme-button" type="button" @click="toggleTheme">
           {{ theme === 'dark' ? 'Light' : 'Dark' }}
         </button>
