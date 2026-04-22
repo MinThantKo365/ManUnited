@@ -1,4 +1,5 @@
 const API_BASE_URL = 'https://api.football-data.org/v4'
+const API_PREFIX = '/api/football/'
 
 export default async function handler(req, res) {
   const token =
@@ -13,7 +14,20 @@ export default async function handler(req, res) {
   }
 
   const rawPath = req.query.path
-  const pathSegments = Array.isArray(rawPath) ? rawPath : rawPath ? [rawPath] : []
+  const queryPathSegments = Array.isArray(rawPath) ? rawPath : rawPath ? [rawPath] : []
+
+  // Vercel may not always populate req.query for catch-all params in non-Next handlers.
+  const requestPathname = new URL(req.url || '', 'http://localhost').pathname
+  const fallbackPath = requestPathname.startsWith(API_PREFIX)
+    ? requestPathname.slice(API_PREFIX.length)
+    : requestPathname
+  const fallbackPathSegments = fallbackPath
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+
+  const pathSegments =
+    queryPathSegments.length > 0 ? queryPathSegments : fallbackPathSegments
   const endpointPath = pathSegments.map((segment) => encodeURIComponent(segment)).join('/')
 
   const incomingUrl = new URL(req.url || '', 'http://localhost')
