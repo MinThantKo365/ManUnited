@@ -1,0 +1,67 @@
+@import './base.css';
+
+#app {
+  max-width: 100%;
+  padding: 0;
+}
+
+.app-shell {
+  --footer-height: 2.2rem;
+  display: grid;
+  gap: 0;
+  min-height: 100vh;
+  padding-top: 4.5rem;
+}
+
+.content {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 1rem;
+  min-height: calc(100vh - 4.5rem - var(--footer-height));
+}
+
+.site-footer {
+  min-height: var(--footer-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0.35rem 1rem;
+  background: #c70101;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.25s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+a,
+button,
+input {
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+@media (min-width: 768px) {
+  .app-shell {
+    --footer-height: 2.4rem;
+    padding-top: 5.3rem;
+  }
+
+  .content {
+    padding: 1.4rem;
+    min-height: calc(100vh - 5.3rem - var(--footer-height));
+  }
+}
