@@ -1,62 +1,141 @@
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import FixtureCard from '@/components/FixtureCard.vue'
+import LoadingSkeleton from '@/components/LoadingSkeleton.vue'
+import {
+  fetchPremierLeagueLiveMatches,
+  fetchPremierLeagueMatchdayMatches,
+  fetchPremierLeagueStandings,
+  type MatchItem,
+  type StandingRow,
+} from '@/services/footballApi'
+
 defineOptions({
   name: 'LeagueLiveView',
 })
 
-type TableRow = {
-  position: number
-  team: string
-  played: number
-  wins: number
-  losses: number
-  draws: number
-  goalDifference: string
-  points: number
+const TEAM_UNITED_ID = 66
+
+const loadingStandings = ref(true)
+const loadingLive = ref(true)
+const loadingMatchday = ref(true)
+const errorStandings = ref('')
+const errorLive = ref('')
+const errorMatchday = ref('')
+const standings = ref<StandingRow[]>([])
+const currentMatchday = ref<number | null>(null)
+const liveMatches = ref<MatchItem[]>([])
+const matchdayFixtures = ref<MatchItem[]>([])
+const lastRefresh = ref<string>('')
+
+/** Slower poll = fewer upstream calls → less HTTP 429 from football-data.org. */
+const pollMs = 120_000
+let pollId: ReturnType<typeof setInterval> | null = null
+
+const formatGd = (n: number) => (n > 0 ? `+${n}` : `${n}`)
+
+const isUnitedRow = (row: StandingRow) =>
+  row.teamId === TEAM_UNITED_ID || row.teamName.toLowerCase().includes('manchester united')
+
+const loadStandings = async () => {
+  loadingStandings.value = true
+  errorStandings.value = ''
+  try {
+    const data = await fetchPremierLeagueStandings()
+    standings.value = data.rows
+    currentMatchday.value = data.currentMatchday
+  } catch (e) {
+    errorStandings.value = e instanceof Error ? e.message : 'Could not load standings.'
+  } finally {
+    loadingStandings.value = false
+  }
 }
 
-type MatchdayFixture = {
-  date: string
-  home: string
-  away: string
-  venue: string
-  isUnitedFixture?: boolean
+const loadLive = async (force = false) => {
+  loadingLive.value = true
+  errorLive.value = ''
+  try {
+    liveMatches.value = await fetchPremierLeagueLiveMatches({ force })
+  } catch (e) {
+    errorLive.value = e instanceof Error ? e.message : 'Could not load live matches.'
+  } finally {
+    loadingLive.value = false
+    lastRefresh.value = new Date().toLocaleString()
+  }
 }
 
-const standings: TableRow[] = [
-  { position: 1, team: 'Arsenal', played: 33, wins: 21, losses: 5, draws: 7, goalDifference: '+37', points: 70 },
-  { position: 2, team: 'Manchester City', played: 32, wins: 20, losses: 5, draws: 7, goalDifference: '+36', points: 67 },
-  { position: 3, team: 'Manchester United', played: 33, wins: 17, losses: 8, draws: 7, goalDifference: '+13', points: 58 },
-  { position: 4, team: 'Aston Villa', played: 33, wins: 16, losses: 7, draws: 10, goalDifference: '+6', points: 58 },
-  { position: 5, team: 'Liverpool', played: 33, wins: 15, losses: 8, draws: 10, goalDifference: '+11', points: 55 },
-  { position: 6, team: 'Brighton', played: 34, wins: 13, losses: 10, draws: 11, goalDifference: '+9', points: 50 },
-  { position: 7, team: 'Chelsea', played: 34, wins: 13, losses: 12, draws: 9, goalDifference: '+8', points: 48 },
-]
+const loadMatchday = async () => {
+  loadingMatchday.value = true
+  errorMatchday.value = ''
+  try {
+    const md = currentMatchday.value
+    if (md != null && md > 0) {
+      matchdayFixtures.value = await fetchPremierLeagueMatchdayMatches(md)
+    } else {
+      matchdayFixtures.value = []
+    }
+  } catch (e) {
+    errorMatchday.value = e instanceof Error ? e.message : 'Could not load matchday fixtures.'
+  } finally {
+    loadingMatchday.value = false
+  }
+}
 
-const matchday34Fixtures: MatchdayFixture[] = [
-  { date: 'April 23', home: 'Burnley', away: 'Manchester City', venue: 'Turf Moor' },
-  { date: 'April 23', home: 'Bournemouth', away: 'Leeds United', venue: 'Vitality Stadium' },
-  { date: 'April 25', home: 'Arsenal', away: 'Newcastle', venue: 'Emirates Stadium' },
-  { date: 'April 25', home: 'Liverpool', away: 'Crystal Palace', venue: 'Anfield' },
-  {
-    date: 'April 28',
-    home: 'Manchester United',
-    away: 'Brentford',
-    venue: 'Old Trafford',
-    isUnitedFixture: true,
-  },
-]
+const refreshAll = async () => {
+  await loadStandings()
+  await loadLive(true)
+  await loadMatchday()
+}
+
+const matchdayLabel = computed(() =>
+  currentMatchday.value != null ? `Matchday ${currentMatchday.value}` : 'Current matchday',
+)
+
+onMounted(async () => {
+  await loadStandings()
+  await loadLive(true)
+  await loadMatchday()
+  pollId = setInterval(() => {
+    void loadLive(false)
+  }, pollMs)
+})
+
+onBeforeUnmount(() => {
+  if (pollId) clearInterval(pollId)
+})
 </script>
 
 <template>
   <section class="league-live">
     <div class="section-head">
-      <h2>Premier League Live Dashboard</h2>
-      <p>As of April 22, 2026</p>
+      <h2>Premier League</h2>
+      <p>Live scores, table, and this round’s fixtures from the API.</p>
+      <p v-if="lastRefresh" class="updated">Live section last checked: {{ lastRefresh }}</p>
+      <button type="button" class="refresh" @click="refreshAll">Refresh all</button>
     </div>
 
     <article class="panel">
-      <h3>Premier League Standings</h3>
-      <div class="table-wrap">
+      <h3>Live now</h3>
+      <p v-if="errorLive" class="error soft">{{ errorLive }}</p>
+      <LoadingSkeleton v-else-if="loadingLive" :cards="2" height="6rem" />
+      <p v-else-if="!liveMatches.length" class="empty">No Premier League matches in play right now.</p>
+      <div v-else class="fixture-list">
+        <FixtureCard
+          v-for="m in liveMatches"
+          :key="m.id"
+          :fixture="m"
+          neutral
+          :highlight="m.homeTeam.name.toLowerCase().includes('manchester united') || m.awayTeam.name.toLowerCase().includes('manchester united')"
+          :to="`/fixtures/${m.id}`"
+        />
+      </div>
+    </article>
+
+    <article class="panel">
+      <h3>Premier League standings</h3>
+      <p v-if="errorStandings" class="error soft">{{ errorStandings }}</p>
+      <LoadingSkeleton v-else-if="loadingStandings" :cards="1" height="10rem" />
+      <div v-else class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -73,16 +152,16 @@ const matchday34Fixtures: MatchdayFixture[] = [
           <tbody>
             <tr
               v-for="row in standings"
-              :key="row.team"
-              :class="{ 'united-row': row.team === 'Manchester United' }"
+              :key="row.teamId"
+              :class="{ 'united-row': isUnitedRow(row) }"
             >
               <td>{{ row.position }}</td>
-              <td class="team">{{ row.team }}</td>
+              <td class="team">{{ row.teamName }}</td>
               <td>{{ row.played }}</td>
-              <td>{{ row.wins }}</td>
-              <td>{{ row.losses }}</td>
-              <td>{{ row.draws }}</td>
-              <td>{{ row.goalDifference }}</td>
+              <td>{{ row.won }}</td>
+              <td>{{ row.lost }}</td>
+              <td>{{ row.draw }}</td>
+              <td>{{ formatGd(row.goalDifference) }}</td>
               <td class="points">{{ row.points }}</td>
             </tr>
           </tbody>
@@ -92,48 +171,21 @@ const matchday34Fixtures: MatchdayFixture[] = [
 
     <article class="panel">
       <div class="fixtures-head">
-        <h3>Matchday 34</h3>
-        <span class="badge">Upcoming Fixtures</span>
+        <h3>{{ matchdayLabel }}</h3>
+        <span class="badge">All games this round</span>
       </div>
-      <div class="fixture-list">
-        <article
-          v-for="fixture in matchday34Fixtures"
-          :key="`${fixture.date}-${fixture.home}-${fixture.away}`"
-          :class="['fixture-item', { highlighted: fixture.isUnitedFixture }]"
-        >
-          <p class="date">{{ fixture.date }}</p>
-          <p class="teams">
-            <strong>{{ fixture.home }}</strong>
-            <span>vs.</span>
-            <strong>{{ fixture.away }}</strong>
-          </p>
-          <p class="venue">{{ fixture.venue }}</p>
-          <p v-if="fixture.isUnitedFixture" class="fixture-note">
-            Crucial match for United's Champions League position.
-          </p>
-        </article>
-      </div>
-    </article>
-
-    <article class="panel">
-      <h3>United Status</h3>
-      <div class="status-grid">
-        <div class="status-card">
-          <span>Position</span>
-          <strong>3rd</strong>
-        </div>
-        <div class="status-card">
-          <span>Points</span>
-          <strong>58</strong>
-        </div>
-        <div class="status-card">
-          <span>Tie Break</span>
-          <strong>Ahead of Villa on GD</strong>
-        </div>
-        <div class="status-card">
-          <span>Next Big Game</span>
-          <strong>Brentford (H), April 28</strong>
-        </div>
+      <p v-if="errorMatchday" class="error soft">{{ errorMatchday }}</p>
+      <LoadingSkeleton v-else-if="loadingMatchday" :cards="4" height="6rem" />
+      <p v-else-if="!matchdayFixtures.length" class="empty">No fixtures loaded for this matchday.</p>
+      <div v-else class="fixture-list">
+        <FixtureCard
+          v-for="m in matchdayFixtures"
+          :key="m.id"
+          :fixture="m"
+          neutral
+          :highlight="m.homeTeam.name.toLowerCase().includes('manchester united') || m.awayTeam.name.toLowerCase().includes('manchester united')"
+          :to="`/fixtures/${m.id}`"
+        />
       </div>
     </article>
   </section>
@@ -153,6 +205,26 @@ const matchday34Fixtures: MatchdayFixture[] = [
 
 .section-head p {
   color: var(--color-text-muted);
+}
+
+.updated {
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.refresh {
+  margin-top: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.refresh:hover {
+  border-color: var(--color-border-hover);
 }
 
 .panel {
@@ -236,80 +308,17 @@ td.points {
   gap: 0.65rem;
 }
 
-.fixture-item {
-  border: 1px solid var(--color-border);
-  border-radius: 0.85rem;
-  background: var(--color-surface-elevated);
-  padding: 0.75rem;
-  display: grid;
-  gap: 0.2rem;
-  box-shadow: 0 8px 18px var(--shadow-color);
-}
-
-.fixture-item.highlighted {
-  border-color: rgba(255, 84, 112, 0.7);
-  background: linear-gradient(120deg, rgba(163, 0, 29, 0.32), rgba(14, 26, 56, 0.75));
-  box-shadow:
-    0 0 18px rgba(255, 73, 104, 0.32),
-    0 0 0 1px rgba(255, 110, 132, 0.3);
-}
-
-.date {
+.empty {
   color: var(--color-text-muted);
-  font-size: 0.82rem;
+  font-size: 0.92rem;
 }
 
-.teams {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
+.error.soft {
   color: var(--color-text);
-}
-
-.teams span {
-  color: var(--color-text-muted);
-  font-size: 0.88rem;
-}
-
-.venue {
-  color: var(--color-text-muted);
-  font-size: 0.86rem;
-}
-
-.fixture-note {
-  color: #ffdbe3;
-  font-size: 0.8rem;
-  margin-top: 0.15rem;
-}
-
-.status-grid {
-  display: grid;
-  gap: 0.65rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (max-width: 700px) {
-  .status-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.status-card {
-  border: 1px solid var(--color-border);
-  border-radius: 0.8rem;
-  background: var(--color-surface-elevated);
-  padding: 0.7rem;
-  display: grid;
-  gap: 0.25rem;
-}
-
-.status-card span {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
-.status-card strong {
-  color: var(--color-text);
-  font-size: 1.02rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 0.65rem;
+  padding: 0.65rem;
+  font-size: 0.9rem;
 }
 </style>

@@ -34,7 +34,11 @@ onMounted(loadData)
 
 const upcomingFixtures = computed(() =>
   [...matches.value]
-    .filter((match) => ['SCHEDULED', 'TIMED', 'POSTPONED'].includes(match.status))
+    .filter((match) =>
+      ['SCHEDULED', 'TIMED', 'POSTPONED', 'IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'].includes(
+        match.status,
+      ),
+    )
     .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()),
 )
 
@@ -86,7 +90,12 @@ const quickStats = computed(() => {
       <article class="panel">
         <h3>Next Match</h3>
         <LoadingSkeleton v-if="loading" :cards="1" height="8rem" />
-        <FixtureCard v-else-if="nextFixture" :fixture="nextFixture" :highlight="true" />
+        <FixtureCard
+          v-else-if="nextFixture"
+          :fixture="nextFixture"
+          :highlight="true"
+          :to="`/fixtures/${nextFixture.id}`"
+        />
         <p v-else class="empty">No upcoming fixture available for team 66.</p>
       </article>
       <div class="grid">
@@ -96,7 +105,12 @@ const quickStats = computed(() => {
           <h3>Last 5 Results</h3>
           <LoadingSkeleton v-if="loading" :cards="3" />
           <TransitionGroup v-else name="fade-slide" tag="div" class="fixture-list">
-            <FixtureCard v-for="fixture in lastFiveResults" :key="fixture.id" :fixture="fixture" />
+            <FixtureCard
+              v-for="fixture in lastFiveResults"
+              :key="fixture.id"
+              :fixture="fixture"
+              :to="`/fixtures/${fixture.id}`"
+            />
           </TransitionGroup>
         </article>
       </div>
@@ -138,7 +152,12 @@ const quickStats = computed(() => {
         </div>
         <LoadingSkeleton v-if="loading" :cards="4" />
         <TransitionGroup v-else name="fade-slide" tag="div" class="fixture-list">
-          <FixtureCard v-for="fixture in filteredFixtures" :key="fixture.id" :fixture="fixture" />
+          <FixtureCard
+            v-for="fixture in filteredFixtures"
+            :key="fixture.id"
+            :fixture="fixture"
+            :to="`/fixtures/${fixture.id}`"
+          />
         </TransitionGroup>
       </article>
     </template>

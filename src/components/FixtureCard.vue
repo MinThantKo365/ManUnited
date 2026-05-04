@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
+
 type Team = {
   name: string
   shortName?: string
@@ -6,6 +8,10 @@ type Team = {
 
 type FixtureScore = {
   fullTime?: {
+    home?: number | null
+    away?: number | null
+  }
+  halfTime?: {
     home?: number | null
     away?: number | null
   }
@@ -23,6 +29,10 @@ type Fixture = {
 const props = defineProps<{
   fixture: Fixture
   highlight?: boolean
+  /** When set, entire card links to match detail. */
+  to?: string
+  /** PL / neutral lists: hide “Opponent” line built for club view. */
+  neutral?: boolean
 }>()
 
 const formatDate = (date: string) =>
@@ -34,13 +44,21 @@ const formatDate = (date: string) =>
     minute: '2-digit',
   }).format(new Date(date))
 
+const LIVE_STATUSES = new Set(['IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT', 'LIVE'])
+
 const isFinished = () => props.fixture.status === 'FINISHED'
 
 const scoreText = () => {
-  if (!isFinished()) return 'vs'
-  const home = props.fixture.score?.fullTime?.home ?? '-'
-  const away = props.fixture.score?.fullTime?.away ?? '-'
-  return `${home} - ${away}`
+  const home = props.fixture.score?.fullTime?.home
+  const away = props.fixture.score?.fullTime?.away
+  if (home != null && away != null) return `${home} - ${away}`
+  if (LIVE_STATUSES.has(props.fixture.status)) return 'LIVE'
+  if (isFinished()) {
+    const fh = props.fixture.score?.fullTime?.home ?? '-'
+    const fa = props.fixture.score?.fullTime?.away ?? '-'
+    return `${fh} - ${fa}`
+  }
+  return 'vs'
 }
 
 const opponent = () => {
@@ -50,12 +68,32 @@ const opponent = () => {
 </script>
 
 <template>
-  <article :class="['fixture-card', { highlight }]">
+  <RouterLink v-if="to" :to="to" class="fixture-card-link">
+    <article :class="['fixture-card', { highlight, live: LIVE_STATUSES.has(fixture.status) }]">
+      <div class="fixture-top">
+        <p class="status">{{ fixture.status }}</p>
+        <p class="date">{{ formatDate(fixture.utcDate) }}</p>
+      </div>
+      <p v-if="!neutral" class="opponent">Opponent: {{ opponent() }}</p>
+
+      <div class="teams">
+        <p>{{ fixture.homeTeam.shortName || fixture.homeTeam.name }}</p>
+        <strong>{{ scoreText() }}</strong>
+        <p>{{ fixture.awayTeam.shortName || fixture.awayTeam.name }}</p>
+      </div>
+      <p v-if="to" class="hint">Tap for match details</p>
+    </article>
+  </RouterLink>
+
+  <article
+    v-else
+    :class="['fixture-card', { highlight, live: LIVE_STATUSES.has(fixture.status) }]"
+  >
     <div class="fixture-top">
       <p class="status">{{ fixture.status }}</p>
       <p class="date">{{ formatDate(fixture.utcDate) }}</p>
     </div>
-    <p class="opponent">Opponent: {{ opponent() }}</p>
+    <p v-if="!neutral" class="opponent">Opponent: {{ opponent() }}</p>
 
     <div class="teams">
       <p>{{ fixture.homeTeam.shortName || fixture.homeTeam.name }}</p>
@@ -66,6 +104,12 @@ const opponent = () => {
 </template>
 
 <style scoped>
+.fixture-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
 .fixture-card {
   border: 1px solid var(--color-border);
   border-radius: 0.9rem;
@@ -92,6 +136,11 @@ const opponent = () => {
     0 12px 24px rgba(199, 1, 1, 0.28);
 }
 
+.fixture-card.live {
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25);
+}
+
 .fixture-top {
   display: flex;
   justify-content: space-between;
@@ -106,6 +155,10 @@ const opponent = () => {
   padding: 0.15rem 0.55rem;
 }
 
+.live .status {
+  background: #15803d;
+}
+
 .date {
   font-size: 0.85rem;
   color: var(--color-text-muted);
@@ -114,6 +167,12 @@ const opponent = () => {
 .opponent {
   color: var(--color-text);
   font-weight: 600;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin: 0;
 }
 
 .teams {
@@ -137,5 +196,9 @@ strong {
   border-radius: 0.5rem;
   padding: 0.25rem 0.65rem;
   font-size: 0.95rem;
+}
+
+.live strong {
+  background: #14532d;
 }
 </style>

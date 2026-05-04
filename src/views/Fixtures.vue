@@ -40,7 +40,15 @@ const filteredMatches = computed(() => {
   if (filter.value === 'all') return sortedMatches.value
   if (filter.value === 'upcoming') {
     return sortedMatches.value.filter((match) =>
-      ['TIMED', 'SCHEDULED', 'POSTPONED'].includes(match.status),
+      [
+        'TIMED',
+        'SCHEDULED',
+        'POSTPONED',
+        'IN_PLAY',
+        'PAUSED',
+        'EXTRA_TIME',
+        'PENALTY_SHOOTOUT',
+      ].includes(match.status),
     )
   }
   return sortedMatches.value.filter((match) => match.status === 'FINISHED')
@@ -71,7 +79,12 @@ const filteredMatches = computed(() => {
     <LoadingSkeleton v-else-if="loading" :cards="6" height="8rem" />
 
     <TransitionGroup v-else name="fade-slide" tag="div" class="fixtures-grid">
-      <FixtureCard v-for="fixture in filteredMatches" :key="fixture.id" :fixture="fixture" />
+      <FixtureCard
+        v-for="fixture in filteredMatches"
+        :key="fixture.id"
+        :fixture="fixture"
+        :to="`/fixtures/${fixture.id}`"
+      />
     </TransitionGroup>
   </section>
 </template>

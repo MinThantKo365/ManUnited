@@ -14,6 +14,11 @@ const router = createRouter({
       component: () => import('../views/Fixtures.vue'),
     },
     {
+      path: '/fixtures/:matchId',
+      name: 'match-detail',
+      component: () => import('../views/MatchDetail.vue'),
+    },
+    {
       path: '/players',
       name: 'players',
       component: () => import('../views/Players.vue'),

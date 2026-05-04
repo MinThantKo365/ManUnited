@@ -1,4 +1,8 @@
-# Manchester United Dashboard (Vue 3)
+# Manchester United
+
+<div align="center">
+  <img src="public/Manchester_United_FC_crest.svg.png" alt="Manchester United crest" width="140" height="140" />
+</div>
 
 Modern Manchester United fan dashboard built with Vue 3 + Vite and football-data.org.
 
@@ -39,4 +43,7 @@ npm run dev
 npm run lint
 npm run build
 ```
-# ManUnited
+
+## About the club
+
+Manchester United, often called Man Utd or the Red Devils, is a world-famous professional football (soccer) club based in Old Trafford, Greater Manchester, England.
