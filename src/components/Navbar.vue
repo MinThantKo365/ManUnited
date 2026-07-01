@@ -52,24 +52,15 @@ watch(menuOpen, (open) => {
   <header :class="['navbar', { scrolled: isScrolled, 'menu-open': menuOpen }]">
     <div class="navbar-inner">
       <RouterLink to="/" class="brand" aria-label="Go to homepage" @click="closeMenu">
-        <img
-          class="crest-logo"
-          src="/Manchester_United_FC_crest.svg.png"
-          alt="Manchester United crest"
-        />
+        <img class="crest-logo" src="/Manchester_United_FC_crest.svg.png" alt="Manchester United crest" />
         <div class="brand-copy">
           <h1>Manchester United</h1>
-          <p>Official Dashboard</p>
+          <p>Tracker Dashboard</p>
         </div>
       </RouterLink>
 
       <nav class="desktop-nav" aria-label="Main navigation">
-        <RouterLink
-          v-for="item in navItems"
-          :key="item.to"
-          :to="item.to"
-          class="nav-link"
-        >
+        <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-link">
           {{ item.label }}
         </RouterLink>
         <ThemeToggle />
@@ -77,14 +68,8 @@ watch(menuOpen, (open) => {
 
       <div class="mobile-actions">
         <ThemeToggle />
-        <button
-          class="menu-toggle"
-          type="button"
-          :aria-expanded="menuOpen"
-          aria-controls="mobile-menu"
-          aria-label="Toggle navigation menu"
-          @click="menuOpen = !menuOpen"
-        >
+        <button class="menu-toggle" type="button" :aria-expanded="menuOpen" aria-controls="mobile-menu"
+          aria-label="Toggle navigation menu" @click="menuOpen = !menuOpen">
           <span class="menu-toggle-lines" :class="{ open: menuOpen }">
             <span />
             <span />
@@ -99,13 +84,7 @@ watch(menuOpen, (open) => {
         <button class="mobile-backdrop" type="button" aria-label="Close menu" @click="closeMenu" />
         <div class="mobile-panel">
           <p class="mobile-panel-title">Menu</p>
-          <RouterLink
-            v-for="item in navItems"
-            :key="item.to"
-            :to="item.to"
-            class="mobile-link"
-            @click="closeMenu"
-          >
+          <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="mobile-link" @click="closeMenu">
             {{ item.label }}
           </RouterLink>
         </div>
