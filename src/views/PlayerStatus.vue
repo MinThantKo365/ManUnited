@@ -2,7 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import LoadingSkeleton from '@/components/LoadingSkeleton.vue'
+import PlayerAvatar from '@/components/PlayerAvatar.vue'
 import { fetchPlayerById, fetchTeamScorers, type TeamPlayer } from '@/services/footballApi'
+import { positionAbbrev } from '@/utils/positionAbbrev'
 
 defineOptions({
   name: 'PlayerStatusView',
@@ -27,22 +29,7 @@ const keyPlayers = new Set([
 
 const playerId = computed(() => Number(route.params.id))
 
-const initials = computed(() => {
-  if (!player.value) return 'MU'
-  return player.value.name
-    .split(' ')
-    .map((part) => part[0] || '')
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-})
-
-const avatar = computed(() => {
-  if (!player.value) return ''
-  if (player.value.photoUrl) return player.value.photoUrl
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><rect width='100%' height='100%' fill='#111'/><text x='50%' y='55%' text-anchor='middle' fill='white' font-size='56' font-family='Arial'>${initials.value}</text></svg>`
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`
-})
+const positionCode = computed(() => positionAbbrev(player.value?.position))
 
 const statusLabel = computed(() => player.value?.status || 'Active')
 const isKeyPlayer = computed(() => (player.value ? keyPlayers.has(player.value.name) : false))
@@ -66,15 +53,19 @@ const loadPlayer = async () => {
     }
     player.value = data
 
-    const scorers = await fetchTeamScorers('PL')
-    const scorerData =
-      scorers.find((item) => item.player.id === data.id) ??
-      scorers.find((item) => item.player.name.toLowerCase() === data.name.toLowerCase())
+    try {
+      const scorers = await fetchTeamScorers('PL')
+      const scorerData =
+        scorers.find((item) => item.player.id === data.id) ??
+        scorers.find((item) => item.player.name.toLowerCase() === data.name.toLowerCase())
 
-    if (scorerData) {
-      playerGoals.value = scorerData.goals ?? null
-      playerAssists.value = scorerData.assists ?? null
-      playerAppearances.value = scorerData.playedMatches ?? null
+      if (scorerData) {
+        playerGoals.value = scorerData.goals ?? null
+        playerAssists.value = scorerData.assists ?? null
+        playerAppearances.value = scorerData.playedMatches ?? null
+      }
+    } catch {
+      // Scorers endpoint may be restricted on free tier; profile still loads
     }
   } catch (err) {
     error.value =
@@ -95,17 +86,22 @@ onMounted(loadPlayer)
 
     <article v-else-if="player" :class="['profile-card', { key: isKeyPlayer }]">
       <div class="profile-top">
-        <img :src="avatar" :alt="player.name" />
+        <PlayerAvatar
+          :name="player.name"
+          :position="player.position"
+          :photo-url="player.photoUrl"
+          size="lg"
+        />
         <div>
           <h2>{{ player.name }}</h2>
-          <p>{{ player.position || 'Unknown Position' }}</p>
+          <span class="position-badge">{{ positionCode }}</span>
+          <p class="position-full">{{ player.position || 'Unknown Position' }}</p>
           <span v-if="isKeyPlayer" class="key-badge">Key Player</span>
         </div>
       </div>
 
       <div class="details-grid">
         <p><strong>National Team:</strong> {{ player.nationality || 'Unknown' }}</p>
-        <p><strong>Jersey Number:</strong> {{ player.shirtNumber ?? 'N/A' }}</p>
         <p><strong>Status:</strong> {{ statusLabel }}</p>
         <p><strong>Date of Birth:</strong> {{ player.dateOfBirth || 'Unknown' }}</p>
       </div>
@@ -146,21 +142,27 @@ onMounted(loadPlayer)
   gap: 0.9rem;
 }
 
-img {
-  width: 6rem;
-  height: 6rem;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  object-fit: cover;
-}
-
-h2 {
+.profile-top h2 {
   font-size: 1.35rem;
   font-weight: 700;
 }
 
-.profile-top p {
+.position-badge {
+  display: inline-flex;
+  margin-top: 0.25rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 0.4rem;
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.position-full {
+  margin-top: 0.35rem;
   color: var(--color-text-muted);
+  font-size: 0.9rem;
 }
 
 .key-badge {

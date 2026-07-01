@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import FixtureCard from '@/components/FixtureCard.vue'
 import LoadingSkeleton from '@/components/LoadingSkeleton.vue'
-import { fetchMatches, type MatchItem } from '@/services/footballApi'
+import { fetchMatches, SEASON_LABEL, type MatchItem } from '@/services/footballApi'
 
 defineOptions({
   name: 'DashboardView',
@@ -35,7 +35,7 @@ onMounted(loadData)
 const upcomingFixtures = computed(() =>
   [...matches.value]
     .filter((match) =>
-      ['SCHEDULED', 'TIMED', 'POSTPONED', 'IN_PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'].includes(
+      ['SCHEDULED', 'TIMED', 'POSTPONED', 'IN PLAY', 'PAUSED', 'EXTRA_TIME', 'PENALTY_SHOOTOUT'].includes(
         match.status,
       ),
     )
@@ -81,7 +81,7 @@ const quickStats = computed(() => {
   <section class="dashboard">
     <div class="section-head">
       <h2>Home Dashboard</h2>
-      <p>Track upcoming fixtures, form, and quick performance insights.</p>
+      <p>{{ SEASON_LABEL }} season — track upcoming fixtures, form, and quick performance insights.</p>
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>
@@ -90,12 +90,8 @@ const quickStats = computed(() => {
       <article class="panel">
         <h3>Next Match</h3>
         <LoadingSkeleton v-if="loading" :cards="1" height="8rem" />
-        <FixtureCard
-          v-else-if="nextFixture"
-          :fixture="nextFixture"
-          :highlight="true"
-          :to="`/fixtures/${nextFixture.id}`"
-        />
+        <FixtureCard v-else-if="nextFixture" :fixture="nextFixture" :highlight="true"
+          :to="`/fixtures/${nextFixture.id}`" />
         <p v-else class="empty">No upcoming fixture available for team 66.</p>
       </article>
       <div class="grid">
@@ -105,12 +101,8 @@ const quickStats = computed(() => {
           <h3>Last 5 Results</h3>
           <LoadingSkeleton v-if="loading" :cards="3" />
           <TransitionGroup v-else name="fade-slide" tag="div" class="fixture-list">
-            <FixtureCard
-              v-for="fixture in lastFiveResults"
-              :key="fixture.id"
-              :fixture="fixture"
-              :to="`/fixtures/${fixture.id}`"
-            />
+            <FixtureCard v-for="fixture in lastFiveResults" :key="fixture.id" :fixture="fixture"
+              :to="`/fixtures/${fixture.id}`" />
           </TransitionGroup>
         </article>
       </div>
@@ -152,12 +144,8 @@ const quickStats = computed(() => {
         </div>
         <LoadingSkeleton v-if="loading" :cards="4" />
         <TransitionGroup v-else name="fade-slide" tag="div" class="fixture-list">
-          <FixtureCard
-            v-for="fixture in filteredFixtures"
-            :key="fixture.id"
-            :fixture="fixture"
-            :to="`/fixtures/${fixture.id}`"
-          />
+          <FixtureCard v-for="fixture in filteredFixtures" :key="fixture.id" :fixture="fixture"
+            :to="`/fixtures/${fixture.id}`" />
         </TransitionGroup>
       </article>
     </template>

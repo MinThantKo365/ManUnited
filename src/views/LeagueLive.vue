@@ -6,6 +6,7 @@ import {
   fetchPremierLeagueLiveMatches,
   fetchPremierLeagueMatchdayMatches,
   fetchPremierLeagueStandings,
+  SEASON_LABEL,
   type MatchItem,
   type StandingRow,
 } from '@/services/footballApi'
@@ -24,6 +25,8 @@ const errorLive = ref('')
 const errorMatchday = ref('')
 const standings = ref<StandingRow[]>([])
 const currentMatchday = ref<number | null>(null)
+const subscriptionLimited = ref(false)
+const seasonLabel = ref(SEASON_LABEL)
 const liveMatches = ref<MatchItem[]>([])
 const matchdayFixtures = ref<MatchItem[]>([])
 const lastRefresh = ref<string>('')
@@ -44,6 +47,8 @@ const loadStandings = async () => {
     const data = await fetchPremierLeagueStandings()
     standings.value = data.rows
     currentMatchday.value = data.currentMatchday
+    subscriptionLimited.value = data.limited
+    seasonLabel.value = data.seasonLabel
   } catch (e) {
     errorStandings.value = e instanceof Error ? e.message : 'Could not load standings.'
   } finally {
@@ -68,12 +73,7 @@ const loadMatchday = async () => {
   loadingMatchday.value = true
   errorMatchday.value = ''
   try {
-    const md = currentMatchday.value
-    if (md != null && md > 0) {
-      matchdayFixtures.value = await fetchPremierLeagueMatchdayMatches(md)
-    } else {
-      matchdayFixtures.value = []
-    }
+    matchdayFixtures.value = await fetchPremierLeagueMatchdayMatches(currentMatchday.value)
   } catch (e) {
     errorMatchday.value = e instanceof Error ? e.message : 'Could not load matchday fixtures.'
   } finally {
@@ -87,8 +87,19 @@ const refreshAll = async () => {
   await loadMatchday()
 }
 
-const matchdayLabel = computed(() =>
-  currentMatchday.value != null ? `Matchday ${currentMatchday.value}` : 'Current matchday',
+const matchdayLabel = computed(() => {
+  if (subscriptionLimited.value) {
+    return `Manchester United — ${seasonLabel.value} fixtures`
+  }
+  return currentMatchday.value != null
+    ? `Matchday ${currentMatchday.value} (${seasonLabel.value})`
+    : `Fixtures (${seasonLabel.value})`
+})
+
+const standingsTitle = computed(() =>
+  subscriptionLimited.value
+    ? `United PL record (${seasonLabel.value})`
+    : `Premier League standings (${seasonLabel.value})`,
 )
 
 onMounted(async () => {
@@ -109,7 +120,11 @@ onBeforeUnmount(() => {
   <section class="league-live">
     <div class="section-head">
       <h2>Premier League</h2>
-      <p>Live scores, table, and this round’s fixtures from the API.</p>
+      <p>Season {{ seasonLabel }} — live scores, table, and fixtures from football-data.org.</p>
+      <p v-if="subscriptionLimited" class="plan-note">
+        Full PL table needs a paid API plan. Showing Manchester United {{ seasonLabel }} data from
+        your current tier.
+      </p>
       <p v-if="lastRefresh" class="updated">Live section last checked: {{ lastRefresh }}</p>
       <button type="button" class="refresh" @click="refreshAll">Refresh all</button>
     </div>
@@ -120,19 +135,14 @@ onBeforeUnmount(() => {
       <LoadingSkeleton v-else-if="loadingLive" :cards="2" height="6rem" />
       <p v-else-if="!liveMatches.length" class="empty">No Premier League matches in play right now.</p>
       <div v-else class="fixture-list">
-        <FixtureCard
-          v-for="m in liveMatches"
-          :key="m.id"
-          :fixture="m"
-          neutral
+        <FixtureCard v-for="m in liveMatches" :key="m.id" :fixture="m" neutral
           :highlight="m.homeTeam.name.toLowerCase().includes('manchester united') || m.awayTeam.name.toLowerCase().includes('manchester united')"
-          :to="`/fixtures/${m.id}`"
-        />
+          :to="`/fixtures/${m.id}`" />
       </div>
     </article>
 
     <article class="panel">
-      <h3>Premier League standings</h3>
+      <h3>{{ standingsTitle }}</h3>
       <p v-if="errorStandings" class="error soft">{{ errorStandings }}</p>
       <LoadingSkeleton v-else-if="loadingStandings" :cards="1" height="10rem" />
       <div v-else class="table-wrap">
@@ -150,12 +160,8 @@ onBeforeUnmount(() => {
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="row in standings"
-              :key="row.teamId"
-              :class="{ 'united-row': isUnitedRow(row) }"
-            >
-              <td>{{ row.position }}</td>
+            <tr v-for="row in standings" :key="row.teamId" :class="{ 'united-row': isUnitedRow(row) }">
+              <td>{{ row.position > 0 ? row.position : '—' }}</td>
               <td class="team">{{ row.teamName }}</td>
               <td>{{ row.played }}</td>
               <td>{{ row.won }}</td>
@@ -178,14 +184,9 @@ onBeforeUnmount(() => {
       <LoadingSkeleton v-else-if="loadingMatchday" :cards="4" height="6rem" />
       <p v-else-if="!matchdayFixtures.length" class="empty">No fixtures loaded for this matchday.</p>
       <div v-else class="fixture-list">
-        <FixtureCard
-          v-for="m in matchdayFixtures"
-          :key="m.id"
-          :fixture="m"
-          neutral
+        <FixtureCard v-for="m in matchdayFixtures" :key="m.id" :fixture="m" neutral
           :highlight="m.homeTeam.name.toLowerCase().includes('manchester united') || m.awayTeam.name.toLowerCase().includes('manchester united')"
-          :to="`/fixtures/${m.id}`"
-        />
+          :to="`/fixtures/${m.id}`" />
       </div>
     </article>
   </section>
@@ -210,6 +211,16 @@ onBeforeUnmount(() => {
 .updated {
   font-size: 0.85rem;
   margin-top: 0.25rem;
+}
+
+.plan-note {
+  margin-top: 0.35rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
 }
 
 .refresh {

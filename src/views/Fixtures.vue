@@ -44,7 +44,7 @@ const filteredMatches = computed(() => {
         'TIMED',
         'SCHEDULED',
         'POSTPONED',
-        'IN_PLAY',
+        'IN PLAY',
         'PAUSED',
         'EXTRA_TIME',
         'PENALTY_SHOOTOUT',
@@ -79,12 +79,8 @@ const filteredMatches = computed(() => {
     <LoadingSkeleton v-else-if="loading" :cards="6" height="8rem" />
 
     <TransitionGroup v-else name="fade-slide" tag="div" class="fixtures-grid">
-      <FixtureCard
-        v-for="fixture in filteredMatches"
-        :key="fixture.id"
-        :fixture="fixture"
-        :to="`/fixtures/${fixture.id}`"
-      />
+      <FixtureCard v-for="fixture in filteredMatches" :key="fixture.id" :fixture="fixture"
+        :to="`/fixtures/${fixture.id}`" />
     </TransitionGroup>
   </section>
 </template>

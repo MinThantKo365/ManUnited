@@ -213,7 +213,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </section>
-      <p v-else-if="['FINISHED', 'IN_PLAY', 'PAUSED'].includes(match.status)" class="goals-note">
+      <p v-else-if="['FINISHED', 'IN PLAY', 'PAUSED'].includes(match.status)" class="goals-note">
 
       </p>
 
