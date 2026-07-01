@@ -6,18 +6,19 @@
 }
 
 .app-shell {
+  --navbar-height: 4.35rem;
   --footer-height: 2.2rem;
   display: grid;
   gap: 0;
   min-height: 100vh;
-  padding-top: 4.5rem;
+  padding-top: calc(var(--navbar-height) + env(safe-area-inset-top, 0px));
 }
 
 .content {
   width: min(1180px, 100%);
   margin: 0 auto;
   padding: 1rem;
-  min-height: calc(100vh - 4.5rem - var(--footer-height));
+  min-height: calc(100vh - var(--navbar-height) - var(--footer-height));
 }
 
 .site-footer {
@@ -56,12 +57,12 @@ input {
 
 @media (min-width: 768px) {
   .app-shell {
+    --navbar-height: 4.85rem;
     --footer-height: 2.4rem;
-    padding-top: 5.3rem;
   }
 
   .content {
     padding: 1.4rem;
-    min-height: calc(100vh - 5.3rem - var(--footer-height));
+    min-height: calc(100vh - var(--navbar-height) - var(--footer-height));
   }
 }
