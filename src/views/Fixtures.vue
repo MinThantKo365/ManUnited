@@ -33,7 +33,7 @@ const loadMatches = async () => {
 onMounted(loadMatches)
 
 const sortedMatches = computed(() =>
-  [...matches.value].sort((a, b) => new Date(b.utcDate).getTime() - new Date(a.utcDate).getTime()),
+  [...matches.value].sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime()),
 )
 
 const filteredMatches = computed(() => {
