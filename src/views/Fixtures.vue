@@ -51,7 +51,9 @@ const filteredMatches = computed(() => {
       ].includes(match.status),
     )
   }
-  return sortedMatches.value.filter((match) => match.status === 'FINISHED')
+  return sortedMatches.value
+    .filter((match) => match.status === 'FINISHED')
+    .sort((a, b) => new Date(b.utcDate).getTime() - new Date(a.utcDate).getTime())
 })
 </script>
 
